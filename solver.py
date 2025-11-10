@@ -56,8 +56,6 @@ def removeGroup(index):
 			for c2 in range(c, C - 1):
 				for r in range(R):
 					G[r][c2] = G[r][c2 + 1]
-			for r in range(R):
-				G[r][C - 1] = 0
 			C = C - 1
 		else:
 			c += 1
