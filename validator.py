@@ -1,5 +1,6 @@
 import numpy as np
 
+# Get input
 R, C = map(int, input().split())
 G = []
 for i in range(R):
@@ -29,5 +30,36 @@ def step():
     newG[:, :nonzerocols.shape[1]] = nonzerocols
     G = newG
 
-step()
+def remove(r, c):
+    global G
+    r = R - r
+    c = c - 1
+
+    target = G[r, c]
+    if target == 0:
+        return 0
+
+    visited = set()
+    stack = [(r, c)]
+    to_remove = []
+
+    # Get group
+    while stack:
+        rr, cc = stack.pop()
+        if (rr, cc) in visited:
+            continue
+        visited.add((rr, cc))
+        if G[rr, cc] == target:
+            to_remove.append((rr, cc))
+            for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+                nr, nc = rr + dr, cc + dc
+                if 0 <= nr < R and 0 <= nc < C:
+                    if (nr, nc) not in visited and G[nr, nc] == target:
+                        stack.append((nr, nc))
+    for rr, cc in to_remove:
+        G[rr, cc] = 0
+    step()
+    return int(target), len(to_remove), (len(to_remove)-1)**2
+
+print(remove(2,2))
 printG()
