@@ -3,10 +3,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-int R, C
-char *grid
-#define GRID(row, col) grid[(col) * R + (row)]
-
 typedef struct
 	int r, c
 Coord
@@ -14,6 +10,31 @@ typedef struct
 	Coord *data
 	int size, cap
 Coords
+typedef struct
+	Coords *data
+	int size, cap
+Groups
+typedef struct
+	int C
+	char *grid
+	Groups groups
+Board
+
+int R
+
+typedef struct
+	int color
+	int length
+	int row
+	int col
+Move
+typedef struct
+	Move *data
+	int size
+	int cap
+Moves
+Moves moves
+#define GRID(row, col) grid[(col) * R + (row)]
 
 void coords_free(Coords *v)
 	free(v->data)
@@ -27,32 +48,17 @@ void coords_append(Coords *v, Coord x)
 		v->cap = newcap
 	v->data[v->size++] = x
 
-typedef struct
-	Coords *data
-	int size, cap
-Groups
+void evaluateGroups(Board *boardPtr)
+	char *grid = boardPtr->grid
 
-Groups groups
+	if boardPtr->groups.data
+		for int i = 0; i < boardPtr->groups.size; ++i
+			coords_free(&boardPtr->groups.data[i])
+		free(boardPtr->groups.data)
+	boardPtr->groups.data = NULL
+	boardPtr->groups.size = boardPtr->groups.cap = 0
 
-void groups_free()
-	if groups.data
-		for int i = 0; i < groups.size; ++i
-			coords_free(&groups.data[i])
-		free(groups.data)
-	groups.data = NULL
-	groups.size = groups.cap = 0
-void groups_append(Coords grp)
-	if groups.size == groups.cap
-		int newcap = groups.cap == 0 ? 4 : groups.cap * 2
-		Coords *tmp = realloc(groups.data, newcap * sizeof(Coords))
-		groups.data = tmp
-		groups.cap = newcap
-	groups.data[groups.size++] = grp
-
-void evaluateGroups()
-	groups_free()
-
-	bool *visited = calloc(R * C, sizeof(bool))
+	bool *visited = calloc(R * boardPtr->C, sizeof(bool))
 	#define VISITED(row, col) (visited[(col) * R + (row)])
 
 	void dfs(int color, int r, int c, Coords *group)
@@ -62,35 +68,25 @@ void evaluateGroups()
 		for int k = 0; k < 4; ++k
 			int nr = r + (const int[]){-1, 0, 1, 0}[k]
 			int nc = c + (const int[]){0, 1, 0, -1}[k]
-			if nr >= 0 && nr < R && nc >= 0 && nc < C && !VISITED(nr, nc) && GRID(nr, nc) == color
+			if nr >= 0 && nr < R && nc >= 0 && nc < boardPtr->C && !VISITED(nr, nc) && GRID(nr, nc) == color
 				dfs(color, nr, nc, group)
 	
 	for int r = 0; r < R; ++r
-		for int c = 0; c < C; ++c
+		for int c = 0; c < boardPtr->C; ++c
 			if !VISITED(r, c)
 				int color = GRID(r, c)
 				if color != 0
 					Coords group = {0}
 					dfs(color, r, c, &group)
-					groups_append(group)
+					if boardPtr->groups.size == boardPtr->groups.cap
+						int newcap = boardPtr->groups.cap == 0 ? 4 : boardPtr->groups.cap * 2
+						Coords *tmp = realloc(boardPtr->groups.data, newcap * sizeof(Coords))
+						boardPtr->groups.data = tmp
+						boardPtr->groups.cap = newcap
+					boardPtr->groups.data[boardPtr->groups.size++] = group
 				else
 					VISITED(r, c) = true
 	free(visited)
-
-typedef struct
-	int color
-	int length
-	int row
-	int col
-Move
-
-typedef struct
-	Move *data
-	int size
-	int cap
-Moves
-
-Moves moves
 
 void moves_init(Moves *m)
 	m->data = NULL
@@ -107,11 +103,13 @@ void moves_append(Moves *m, Move mv)
 		m->data = tmp; m->cap = newcap
 	m->data[m->size++] = mv
 
-void removeGroup(int index)
-	if index < 0 || index >= groups.size
+void makeMove(Board *boardPtr, int index)
+	char *grid = boardPtr->grid
+
+	if index < 0 || index >= boardPtr->groups.size
 		printf("error: out of bounds index\n")
 
-	Coords *grp = &groups.data[index]
+	Coords *grp = &boardPtr->groups.data[index]
 	if grp->size == 0
 		return
 
@@ -133,34 +131,35 @@ void removeGroup(int index)
 
 	// If an entire column becomes empty, all columns to the right shift left to fill the gap
 	int c = 0
-	while c < C
+	while c < boardPtr->C
 		if GRID(R - 1, c) == 0
-			for int c2 = c; c2 < C - 1; ++c2
+			for int c2 = c; c2 < boardPtr->C - 1; ++c2
 				for int r = 0; r < R; ++r
 					GRID(r, c2) = GRID(r, c2 + 1)
-			--C
+			--boardPtr->C
 		else
 			++c
 
-	evaluateGroups()
+	evaluateGroups(boardPtr)
 
 int main()
-	scanf("%u %u", &R, &C)
+	Board board
+	scanf("%u %u", &R, &board.C)
 	while getchar() != '\n'
-	grid = malloc(R * C)
+	board.grid = malloc(R * board.C)
 	for int row = 0; row != R; ++row
-		char line[C + 2]
-		fgets(line, C + 2, stdin)
-		for int col = 0; col != C; ++col
-			grid[col * R + row] = line[col] - '0'
+		char line[board.C + 2]
+		fgets(line, board.C + 2, stdin)
+		for int col = 0; col != board.C; ++col
+			board.GRID(row, col) = line[col] - '0'
+	evaluateGroups(&board)
 
-	evaluateGroups()
 	for
 		bool noValidMoveExists = true;
-		for int i = 0; i < groups.size; ++i
-			if groups.data[i].size > 1
+		for int i = 0; i < board.groups.size; ++i
+			if board.groups.data[i].size > 1
 				noValidMoveExists = false
-				removeGroup(0)
+				makeMove(&board, 0)
 				break
 		if noValidMoveExists
 			break
