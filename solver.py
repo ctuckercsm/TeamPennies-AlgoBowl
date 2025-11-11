@@ -29,7 +29,6 @@ def evaluateGroups():
 				if color != 0:
 					group = []
 					dfs(groupIndex, color, r, c, group)
-					# group.sort(key=lambda p: (p[0], p[1]))
 					groups.append(group)
 					groupIndex = groupIndex + 1
 
