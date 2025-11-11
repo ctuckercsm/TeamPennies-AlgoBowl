@@ -76,6 +76,8 @@ def isValid(debug):
     totalscore = 0
     for move in moves:
         res = remove(move[2],move[3])
+        if(res==0):
+            continue
         totalscore += res[2]
         if(debug):
             printG()
