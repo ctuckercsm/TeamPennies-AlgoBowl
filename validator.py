@@ -1,6 +1,6 @@
 import numpy as np
 
-# Get input
+# Get "input" input
 R, C = map(int, input().split())
 G = []
 for i in range(R):
@@ -8,12 +8,21 @@ for i in range(R):
 G = np.array(G, dtype = int)
 R, C = G.shape
 
+# Get "output" input
+score = int(input())
+m = int(input())
+moves = []
+for i in range(m):
+    t, n, r, c = map(int, input().split())
+    moves.append([t,n,r,c])
+
 def printG():
     for row in G:
         for col in row:
             print(col, end='')
         print()
 
+# Advance physics
 def step():
     global G
     # Step columns downward
@@ -30,6 +39,7 @@ def step():
     newG[:, :nonzerocols.shape[1]] = nonzerocols
     G = newG
 
+# Remove tile group
 def remove(r, c):
     global G
     r = R - r
@@ -61,5 +71,33 @@ def remove(r, c):
     step()
     return int(target), len(to_remove), (len(to_remove)-1)**2
 
-print(remove(2,2))
-printG()
+# Simulate moves
+def isValid(debug):
+    totalscore = 0
+    for move in moves:
+        res = remove(move[2],move[3])
+        totalscore += res[2]
+        if(debug):
+            printG()
+            print("="*C)
+        # Check validity
+        if(move[0] != res[0] or move[1] != res[1]):
+            print("Invalid move: ")
+            print("Move made:")
+            print(move)
+            if(move[0] != res[0]):
+                print("Color does not match")
+            if(move[1] != res[1]):
+                print("Amount does not match")
+            print()
+            return False
+    if(totalscore != score):
+        print("Score does not match")
+        return False
+    return True
+
+# Set to true to see the board after every move
+debug = False  
+if(debug):
+    printG()
+print(isValid(debug))
