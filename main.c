@@ -3,23 +3,25 @@
 #include <stdbool.h>
 #include <string.h>
 
+typedef unsigned char Color
+
 typedef struct
 	unsigned r, c
 Coord
 
 typedef struct
 	Coord *arr
-	unsigned size, cap
+	unsigned size, capacity
 Group
 
 typedef struct
 	Group *arr
-	unsigned size, cap
+	unsigned size, capacity
 Groups
 
 typedef struct
 	unsigned C
-	char *grid
+	Color *grid
 	Groups groups
 Board
 
@@ -27,55 +29,56 @@ unsigned R
 
 #define GRID(row, col) grid[(col) * R + (row)]
 
-void coords_free(Group *v)
-	free(v->arr)
-	v->arr = NULL
-	v->size = v->cap = 0
-void coords_append(Group *v, Coord x)
-	if v->size == v->cap
-		unsigned newcap = v->cap == 0 ? 4 : v->cap * 2
-		v->arr = realloc(v->arr, newcap * sizeof(Coord))
-		v->cap = newcap
-	v->arr[v->size++] = x
+void coords_append(Group *group, Coord x)
+	if group->size == group->capacity
+		group->arr = realloc(group->arr, (group->capacity = group->capacity == 0 ? 4 : group->capacity * 2) * sizeof(Coord))
+	group->arr[group->size++] = x
+
+void freeGroups(Groups groups)
+	for unsigned i = 0; i != groups.size; ++i
+		free(groups.arr[i].arr)
+	free(groups.arr)
 
 void evaluateGroups(Board *boardPtr)
 	char *grid = boardPtr->grid
-
-	if boardPtr->groups.arr
-		for unsigned i = 0; i < boardPtr->groups.size; ++i
-			coords_free(&boardPtr->groups.arr[i])
-		free(boardPtr->groups.arr)
 	boardPtr->groups.arr = NULL
-	boardPtr->groups.size = boardPtr->groups.cap = 0
+	boardPtr->groups.size = boardPtr->groups.capacity = 0
 
 	bool *visited = calloc(R * boardPtr->C, sizeof(bool))
-	#define VISITED(row, col) (visited[(col) * R + (row)])
+	#define VISITED(row, col) visited[(col) * R + (row)]
 
-	void dfs(unsigned color, unsigned r, unsigned c, Group *group)
+	void dfs(Color color, unsigned r, unsigned c, Group *group)
 		VISITED(r, c) = true
 		coords_append(group, (Coord){r, c})
-		for unsigned k = 0; k < 4; ++k
-			unsigned nr = r + (const unsigned[]){-1, 0, 1, 0}[k]
-			unsigned nc = c + (const unsigned[]){0, 1, 0, -1}[k]
+		for unsigned i = 0; i < 4; ++i
+			unsigned nr = r + (const unsigned[]){-1, 0, 1, 0}[i]
+			unsigned nc = c + (const unsigned[]){0, 1, 0, -1}[i]
 			if nr < R && nc < boardPtr->C && !VISITED(nr, nc) && GRID(nr, nc) == color
 				dfs(color, nr, nc, group)
 	
 	for unsigned r = 0; r < R; ++r
 		for unsigned c = 0; c < boardPtr->C; ++c
 			if !VISITED(r, c)
-				unsigned color = GRID(r, c)
+				Color color = GRID(r, c)
 				if color != 0
 					Group group = {0}
 					dfs(color, r, c, &group)
-					if boardPtr->groups.size == boardPtr->groups.cap
-						unsigned newcap = boardPtr->groups.cap == 0 ? 4 : boardPtr->groups.cap * 2
-						Group *tmp = realloc(boardPtr->groups.arr, newcap * sizeof(Group))
-						boardPtr->groups.arr = tmp
-						boardPtr->groups.cap = newcap
+					if boardPtr->groups.size == boardPtr->groups.capacity
+						boardPtr->groups.arr = realloc(boardPtr->groups.arr, (boardPtr->groups.capacity = boardPtr->groups.capacity == 0 ? 4 : boardPtr->groups.capacity * 2) * sizeof(Group))
 					boardPtr->groups.arr[boardPtr->groups.size++] = group
 				else
 					VISITED(r, c) = true
 	free(visited)
+
+unsigned getLargestGroupSizeIndex(Groups groups)
+	unsigned largestSize = 0
+	unsigned index = -1
+	for unsigned i = 0; i < groups.size; ++i
+		Group group = groups.arr[i]
+		if largestSize < group.size
+			largestSize = group.size
+			index = i
+	return index
 
 void makeMove(Board *boardPtr, unsigned i)
 	char *grid = boardPtr->grid
@@ -83,14 +86,14 @@ void makeMove(Board *boardPtr, unsigned i)
 	if i < 0 || i >= boardPtr->groups.size
 		printf("error: out of bounds index\n")
 
-	Group grp = boardPtr->groups.arr[i]
-	if grp.size < 2
+	Group group = boardPtr->groups.arr[i]
+	if group.size < 2
 		printf("error: group size must be at least 2\n")
 
 	// When you remove a group, all squares above fall down to fill the gaps
-	for unsigned k = 0; k < grp.size; ++k
-		unsigned rr = grp.arr[k].r
-		unsigned cc = grp.arr[k].c
+	for unsigned i = 0; i < group.size; ++i
+		unsigned rr = group.arr[i].r
+		unsigned cc = group.arr[i].c
 
 		// char *dst = grid + (cc * R + rr)
 		// memmove(dst, dst - 1, rr)
@@ -119,7 +122,49 @@ void makeMove(Board *boardPtr, unsigned i)
 
 	evaluateGroups(boardPtr)
 
-unsigned main()
+typedef struct
+	unsigned color
+	unsigned length
+	unsigned row
+	unsigned col
+Move
+
+Move makeBestMove(Board *boardPtr, unsigned reasoningDepth, bool inactionIsAcceptable)
+	if reasoningDepth == 0
+		return (Move) { 0 }
+	
+	int index
+	if (index = getLargestGroupSizeIndex(boardPtr->groups)) == -1
+		return (Move) { 0 }
+	int bestMoveRating = boardPtr->groups.arr[index].size
+	int bestMoveIndex = -1
+
+	for unsigned i = 0; i < boardPtr->groups.size; ++i
+		if boardPtr->groups.arr[i].size >= 2
+			Board newBoard = *boardPtr
+			newBoard.grid = memcpy(malloc(R * boardPtr->C), boardPtr->grid, R * boardPtr->C)
+			makeMove(&newBoard, i)
+			makeBestMove(&newBoard, reasoningDepth - 1, true)
+			int thisMoveRating = 0
+			if bestMoveRating < thisMoveRating
+				bestMoveRating = thisMoveRating
+				bestMoveIndex = i
+
+	if bestMoveIndex == -1
+		if inactionIsAcceptable
+			return (Move) { 0 }
+		bestMoveIndex = getLargestGroupSizeIndex(boardPtr->groups)
+		if bestMoveIndex == -1
+			printf("IMPOSSIBLE!\n")
+
+	Group group = boardPtr->groups.arr[bestMoveIndex]
+	unsigned r0 = group.arr[0].r
+	unsigned c0 = group.arr[0].c
+	Move bestMove = (Move) { boardPtr->GRID(r0, c0), group.size, r0, c0 }
+	makeMove(boardPtr, bestMoveIndex)
+	return bestMove
+
+int main()
 	Board board
 	scanf("%u %u", &R, &board.C)
 	while getchar() != '\n'
@@ -132,44 +177,24 @@ unsigned main()
 	evaluateGroups(&board)
 
 	typedef struct
-		unsigned color
-		unsigned length
-		unsigned row
-		unsigned col
-	Move
-	typedef struct
 		Move *arr
 		unsigned size
-		unsigned cap
+		unsigned capacity
 	Moves
 	Moves moves = {0}
 
-	for
-		bool noValidMoveExists = true;
-		for unsigned i = 0; i < board.groups.size; ++i
-			Group grp = board.groups.arr[i]
-			if grp.size > 1
-				noValidMoveExists = false
+	unsigned index
+	while (index = getLargestGroupSizeIndex(board.groups)) != -1 && board.groups.arr[index].size > 1
+		if moves.size == moves.capacity
+			moves.arr = realloc(moves.arr, (moves.capacity = moves.capacity == 0 ? 4 : moves.capacity * 2) * sizeof(Move))
+		moves.arr[moves.size++] = makeBestMove(&board, 5, false)
 
-				unsigned r0 = grp.arr[0].r
-				unsigned c0 = grp.arr[0].c
-				if moves.size == moves.cap
-					unsigned newcap = moves.cap == 0 ? 4 : moves.cap * 2
-					moves.arr = realloc(moves.arr, newcap * sizeof(Move))
-					moves.cap = newcap
-				moves.arr[moves.size++] = (Move) { board.GRID(r0, c0), grp.size, r0, c0 }
-
-				makeMove(&board, i)
-				break
-		if noValidMoveExists
-			break
-
+	// Output
 	unsigned totalScore = 0
 	for unsigned i = 0; i < moves.size; ++i
-		unsigned l = moves.arr[i].length - 1
-		totalScore += l * l
-	printf("%d\n", totalScore)
-	printf("%d\n", moves.size)
+		unsigned tmp = moves.arr[i].length - 1
+		totalScore += tmp * tmp
+	printf("%d\n%d\n", totalScore, moves.size)
 	for unsigned i = 0; i < moves.size; ++i
 		Move m = moves.arr[i]
 		printf("%d %d %d %d\n", m.color, m.length, R - m.row, m.col + 1)
