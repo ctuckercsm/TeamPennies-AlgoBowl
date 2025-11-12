@@ -68,7 +68,7 @@ while True:
 	for group in groups:
 		if len(group) > 1:
 			noValidMoveExists = False
-			removeGroup(0)
+			removeGroup(0) # This is incorrect
 			break
 	if noValidMoveExists:
 		break

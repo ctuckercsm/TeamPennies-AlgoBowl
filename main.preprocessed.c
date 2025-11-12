@@ -6,173 +6,174 @@
 #include <string.h>
 
 typedef struct{
-int r, c;}
+unsigned r, c;}
 Coord;
+
 typedef struct{
-Coord *data;
-int size, cap;}
-Coords;
+Coord *arr;
+unsigned size, cap;}
+Group;
+
 typedef struct{
-Coords *data;
-int size, cap;}
+Group *arr;
+unsigned size, cap;}
 Groups;
+
 typedef struct{
-int color;
-int length;
-int row;
-int col;}
-Move;
-typedef struct{
-Move *data;
-int size;
-int cap;}
-Moves;
-typedef struct{
-int C;
+unsigned C;
 char *grid;
 Groups groups;}
 Board;
 
-int R;
+unsigned R;
 
-Moves moves;
 #define GRID(row, col) grid[(col) * R + (row)]
 
-void coords_free(Coords *v){
-free(v->data);
-v->data = NULL;
+void coords_free(Group *v){
+free(v->arr);
+v->arr = NULL;
 v->size = v->cap = 0;}
-void coords_append(Coords *v, Coord x){
+void coords_append(Group *v, Coord x){
 if(v->size == v->cap){
-int newcap = v->cap == 0 ? 4 : v->cap * 2;
-Coord *tmp = realloc(v->data, newcap * sizeof(Coord));
-v->data = tmp;
+unsigned newcap = v->cap == 0 ? 4 : v->cap * 2;
+v->arr = realloc(v->arr, newcap * sizeof(Coord));
 v->cap = newcap;}
-v->data[v->size++] = x;}
+v->arr[v->size++] = x;}
 
 void evaluateGroups(Board *boardPtr){
 char *grid = boardPtr->grid;
 
-if(boardPtr->groups.data){
-for(int i = 0; i < boardPtr->groups.size; ++i){
-coords_free(&boardPtr->groups.data[i]);}
-free(boardPtr->groups.data);}
-boardPtr->groups.data = NULL;
+if(boardPtr->groups.arr){
+for(unsigned i = 0; i < boardPtr->groups.size; ++i){
+coords_free(&boardPtr->groups.arr[i]);}
+free(boardPtr->groups.arr);}
+boardPtr->groups.arr = NULL;
 boardPtr->groups.size = boardPtr->groups.cap = 0;
 
 bool *visited = calloc(R * boardPtr->C, sizeof(bool));
 #define VISITED(row, col) (visited[(col) * R + (row)])
 
-void dfs(int color, int r, int c, Coords *group){
+void dfs(unsigned color, unsigned r, unsigned c, Group *group){
 VISITED(r, c) = true;
-Coord xy = {r, c};
-coords_append(group, xy);
-for(int k = 0; k < 4; ++k){
-int nr = r + (const int[]){-1, 0, 1, 0}[k];
-int nc = c + (const int[]){0, 1, 0, -1}[k];
-if(nr >= 0 && nr < R && nc >= 0 && nc < boardPtr->C && !VISITED(nr, nc) && GRID(nr, nc) == color){
+coords_append(group, (Coord){r, c});
+for(unsigned k = 0; k < 4; ++k){
+unsigned nr = r + (const unsigned[]){-1, 0, 1, 0}[k];
+unsigned nc = c + (const unsigned[]){0, 1, 0, -1}[k];
+if(nr < R && nc < boardPtr->C && !VISITED(nr, nc) && GRID(nr, nc) == color){
 dfs(color, nr, nc, group);}}}
 
-for(int r = 0; r < R; ++r){
-for(int c = 0; c < boardPtr->C; ++c){
+for(unsigned r = 0; r < R; ++r){
+for(unsigned c = 0; c < boardPtr->C; ++c){
 if(!VISITED(r, c)){
-int color = GRID(r, c);
+unsigned color = GRID(r, c);
 if(color != 0){
-Coords group = {0};
+Group group = {0};
 dfs(color, r, c, &group);
 if(boardPtr->groups.size == boardPtr->groups.cap){
-int newcap = boardPtr->groups.cap == 0 ? 4 : boardPtr->groups.cap * 2;
-Coords *tmp = realloc(boardPtr->groups.data, newcap * sizeof(Coords));
-boardPtr->groups.data = tmp;
+unsigned newcap = boardPtr->groups.cap == 0 ? 4 : boardPtr->groups.cap * 2;
+Group *tmp = realloc(boardPtr->groups.arr, newcap * sizeof(Group));
+boardPtr->groups.arr = tmp;
 boardPtr->groups.cap = newcap;}
-boardPtr->groups.data[boardPtr->groups.size++] = group;}
+boardPtr->groups.arr[boardPtr->groups.size++] = group;}
 else{
 VISITED(r, c) = true;}}}}
 free(visited);}
 
-void moves_init(Moves *m){
-m->data = NULL;
-m->size = 0;
-m->cap = 0;}
-void moves_free(Moves *m){
-free(m->data);
-m->data = NULL;
-m->size = m->cap = 0;}
-void moves_append(Moves *m, Move mv){
-if(m->size == m->cap){
-int newcap = m->cap == 0 ? 4 : m->cap * 2;
-Move *tmp = realloc(m->data, newcap * sizeof(Move));
-m->data = tmp; m->cap = newcap;}
-m->data[m->size++] = mv;}
-
-void makeMove(Board *boardPtr, int index){
+void makeMove(Board *boardPtr, unsigned i){
 char *grid = boardPtr->grid;
 
-if(index < 0 || index >= boardPtr->groups.size){
+if(i < 0 || i >= boardPtr->groups.size){
 printf("error: out of bounds index\n");}
 
-Coords *grp = &boardPtr->groups.data[index];
-if(grp->size == 0){
-return;}
-
-int r0 = grp->data[0].r;
-int c0 = grp->data[0].c;
-Move mv = { GRID(r0, c0), grp->size, r0, c0 };
-moves_append(&moves, mv);
+Group grp = boardPtr->groups.arr[i];
+if(grp.size < 2){
+printf("error: group size must be at least 2\n");}
 
 
-for(int k = 0; k < grp->size; ++k){
-int rr = grp->data[k].r;
-int cc = grp->data[k].c;
-for(int row = rr; row > 0; --row){
-int val = GRID(row - 1, cc);
-GRID(row, cc) = val;
-if(val == 0){
+for(unsigned k = 0; k < grp.size; ++k){
+unsigned rr = grp.arr[k].r;
+unsigned cc = grp.arr[k].c;
+
+
+
+
+for(unsigned row = rr; row > 0; --row){
+if(!(GRID(row, cc) = GRID(row - 1, cc))){
 break;}}
+
 GRID(0, cc) = 0;}
 
 
-int c = 0;
+unsigned c = 0;
 while(c < boardPtr->C){
 if(GRID(R - 1, c) == 0){
-for(int c2 = c; c2 < boardPtr->C - 1; ++c2){
-for(int r = 0; r < R; ++r){
+
+for(unsigned c2 = c; c2 < boardPtr->C - 1; ++c2){
+for(unsigned r = 0; r < R; ++r){
 GRID(r, c2) = GRID(r, c2 + 1);}}
 --boardPtr->C;}
+
+
+
+
 else{
 ++c;}}
 
 evaluateGroups(boardPtr);}
 
-int main(){
+unsigned main(){
 Board board;
 scanf("%u %u", &R, &board.C);
 while(getchar() != '\n');
 board.grid = malloc(R * board.C);
-for(int row = 0; row != R; ++row){
+for(unsigned row = 0; row != R; ++row){
 char line[board.C + 2];
 fgets(line, board.C + 2, stdin);
-for(int col = 0; col != board.C; ++col){
+for(unsigned col = 0; col != board.C; ++col){
 board.GRID(row, col) = line[col] - '0';}}
-
 evaluateGroups(&board);
+
+typedef struct{
+unsigned color;
+unsigned length;
+unsigned row;
+unsigned col;}
+Move;
+typedef struct{
+Move *arr;
+unsigned size;
+unsigned cap;}
+Moves;
+Moves moves = {0};
 
 for(;;){
 bool noValidMoveExists = true;
-for(int i = 0; i < board.groups.size; ++i){
-if(board.groups.data[i].size > 1){
+for(unsigned i = 0; i < board.groups.size; ++i){
+Group grp = board.groups.arr[i];
+if(grp.size > 1){
 noValidMoveExists = false;
-makeMove(&board, 0);
+
+unsigned r0 = grp.arr[0].r;
+unsigned c0 = grp.arr[0].c;
+if(moves.size == moves.cap){
+unsigned newcap = moves.cap == 0 ? 4 : moves.cap * 2;
+moves.arr = realloc(moves.arr, newcap * sizeof(Move));
+moves.cap = newcap;}
+moves.arr[moves.size++] = (Move) { board.GRID(r0, c0), grp.size, r0, c0 };
+
+makeMove(&board, i);
 break;}}
 if(noValidMoveExists){
 break;}}
 
-int totalScore = 0;
-for(int i = 0; i < moves.size; ++i){
-int l = moves.data[i].length - 1;
+unsigned totalScore = 0;
+for(unsigned i = 0; i < moves.size; ++i){
+unsigned l = moves.arr[i].length - 1;
 totalScore += l * l;}
 printf("%d\n", totalScore);
 printf("%d\n", moves.size);
-for(int i = 0; i < moves.size; ++i){
-Move m = moves.data[i];
-printf("%d %d %d %d\n", m.color, m.length, R - m.row, m.col + 1);}}
+for(unsigned i = 0; i < moves.size; ++i){
+Move m = moves.arr[i];
+printf("%d %d %d %d\n", m.color, m.length, R - m.row, m.col + 1);}
+
+return 0;}
