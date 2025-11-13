@@ -33,7 +33,7 @@ unsigned R;
 
 void coords_append(Group *group, Coord x){
 if(group->size == group->capacity){
-group->arr = realloc(group->arr, (group->capacity = group->capacity == 0 ? 4 : group->capacity * 2) * sizeof(Coord));}
+group->arr = realloc(group->arr, (group->capacity = group->capacity ? group->capacity * 2 : 4) * sizeof(Coord));}
 group->arr[group->size++] = x;}
 
 void freeGroups(Groups groups){
@@ -52,11 +52,22 @@ bool *visited = calloc(R * boardPtr->C, sizeof(bool));
 void dfs(Color color, unsigned r, unsigned c, Group *group){
 VISITED(r, c) = true;
 coords_append(group, (Coord){r, c});
-for(unsigned i = 0; i < 4; ++i){
-unsigned nr = r + (const unsigned[]){-1, 0, 1, 0}[i];
-unsigned nc = c + (const unsigned[]){0, 1, 0, -1}[i];
-if(nr < R && nc < boardPtr->C && !VISITED(nr, nc) && GRID(nr, nc) == color){
-dfs(color, nr, nc, group);}}}
+{
+unsigned nr = r - 1;
+if((nr < R && !VISITED(nr, c) && GRID(nr, c) == color)){
+dfs(color, nr, c, group);}}
+{
+unsigned nr = r + 1;
+if((nr < R && !VISITED(nr, c) && GRID(nr, c) == color)){
+dfs(color, nr, c, group);}}
+{
+unsigned nc = c + 1;
+if((nc < boardPtr->C && !VISITED(r, nc) && GRID(r, nc) == color)){
+dfs(color, r, nc, group);}}
+{
+unsigned nc = c - 1;
+if((nc < boardPtr->C && !VISITED(r, nc) && GRID(r, nc) == color)){
+dfs(color, r, nc, group);}}}
 
 for(unsigned r = 0; r < R; ++r){
 for(unsigned c = 0; c < boardPtr->C; ++c){
@@ -66,7 +77,7 @@ if(color != 0){
 Group group = {0};
 dfs(color, r, c, &group);
 if(boardPtr->groups.size == boardPtr->groups.capacity){
-boardPtr->groups.arr = realloc(boardPtr->groups.arr, (boardPtr->groups.capacity = boardPtr->groups.capacity == 0 ? 4 : boardPtr->groups.capacity * 2) * sizeof(Group));}
+boardPtr->groups.arr = realloc(boardPtr->groups.arr, (boardPtr->groups.capacity = boardPtr->groups.capacity ? boardPtr->groups.capacity * 2 : 4) * sizeof(Group));}
 boardPtr->groups.arr[boardPtr->groups.size++] = group;}
 else{
 VISITED(r, c) = true;}}}}
@@ -93,32 +104,35 @@ if(group.size < 2){
 printf("error: group size must be at least 2\n");}
 
 
+bool *col_touched = calloc(boardPtr->C, sizeof(bool));
 for(unsigned i = 0; i < group.size; ++i){
 unsigned rr = group.arr[i].r;
 unsigned cc = group.arr[i].c;
+GRID(rr, cc) = 0;
+col_touched[cc] = true;}
 
+for(unsigned cc = 0; cc < boardPtr->C; ++cc){
+if(!col_touched[cc]){
+continue;}
 
+int write_idx = R - 1;
 
+for(int row = (int)R - 1; row >= 0; --row){
+int val;
+if(val = GRID((unsigned)row, cc)){
+GRID((unsigned)write_idx, cc) = val;
+--write_idx;}}
 
-for(unsigned row = rr; row > 0; --row){
-if(!(GRID(row, cc) = GRID(row - 1, cc))){
-break;}}
-
-GRID(0, cc) = 0;}
+for(int row = write_idx; row >= 0; --row){
+GRID(row, cc) = 0;}}
+free(col_touched);
 
 
 unsigned c = 0;
 while(c < boardPtr->C){
 if(GRID(R - 1, c) == 0){
-
-for(unsigned c2 = c; c2 < boardPtr->C - 1; ++c2){
-for(unsigned r = 0; r < R; ++r){
-GRID(r, c2) = GRID(r, c2 + 1);}}
---boardPtr->C;}
-
-
-
-
+char *dst = grid + (c * R);
+memmove(dst, dst + R, (--boardPtr->C - c) * R);}
 else{
 ++c;}}
 
@@ -130,17 +144,23 @@ unsigned length;
 unsigned row;
 unsigned col;}
 Move;
+typedef struct{
+Move *arr;
+unsigned size;
+unsigned capacity;}
+Moves;
+Moves moves = {0};
 
-Move makeBestMove(Board *boardPtr, unsigned reasoningDepth, bool inactionIsAcceptable){
+void makeBestMove(Board *boardPtr, unsigned reasoningDepth, bool inactionIsAcceptable){
 if(reasoningDepth == 0){
-return (Move) { 0 };}
+return;}
 
-int bestMoveRating;
+int currentLargestGroupSize;
 {
 int index;
 if((index = getLargestGroupSizeIndex(boardPtr->groups)) == -1){
-return (Move) { 0 };}
-bestMoveRating = boardPtr->groups.arr[index].size;}
+return;}
+currentLargestGroupSize = boardPtr->groups.arr[index].size;}
 int bestMoveIndex = -1;
 
 for(unsigned i = 0; i < boardPtr->groups.size; ++i){
@@ -149,30 +169,42 @@ Board newBoard = *boardPtr;
 newBoard.grid = memcpy(malloc(R * boardPtr->C), boardPtr->grid, R * boardPtr->C);
 makeMove(&newBoard, i);
 makeBestMove(&newBoard, reasoningDepth - 1, true);
-int index, thisMoveRating;
+int index, potentialLargestGroupSize;
 if((index = getLargestGroupSizeIndex(newBoard.groups)) == -1){
-thisMoveRating = 0;}
+potentialLargestGroupSize = 0;}
 else{
-thisMoveRating = newBoard.groups.arr[index].size;}
-if(bestMoveRating < thisMoveRating){
-bestMoveRating = thisMoveRating;
-bestMoveIndex = i;}}}
+potentialLargestGroupSize = newBoard.groups.arr[index].size;}
+
+if(currentLargestGroupSize < potentialLargestGroupSize){
+currentLargestGroupSize = potentialLargestGroupSize;
+bestMoveIndex = i;}
+free(newBoard.grid);
+freeGroups(newBoard.groups);}}
 
 if(bestMoveIndex == -1){
 if(inactionIsAcceptable){
-return (Move) { 0 };}
+return;}
 bestMoveIndex = getLargestGroupSizeIndex(boardPtr->groups);
 if(bestMoveIndex == -1){
 printf("IMPOSSIBLE!\n");}}
 
+if(!inactionIsAcceptable){
 Group group = boardPtr->groups.arr[bestMoveIndex];
 unsigned r0 = group.arr[0].r;
 unsigned c0 = group.arr[0].c;
-Move bestMove = (Move) { boardPtr->GRID(r0, c0), group.size, r0, c0 };
-makeMove(boardPtr, bestMoveIndex);
-return bestMove;}
+if(moves.size == moves.capacity){
+moves.arr = realloc(moves.arr, (moves.capacity = moves.capacity ? moves.capacity * 2 : 4) * sizeof(Move));}
+moves.arr[moves.size++] = (Move) { boardPtr->GRID(r0, c0), group.size, r0, c0 };}
 
-int main(){
+makeMove(boardPtr, bestMoveIndex);
+return;}
+
+int main(int argc, char *argv[]){
+FILE *f = fopen(argv[1], "w");
+if(!f){
+perror("fopen");
+return EXIT_FAILURE;}
+
 Board board;
 scanf("%u %u", &R, &board.C);
 while(getchar() != '\n');
@@ -182,29 +214,32 @@ char line[board.C + 2];
 fgets(line, board.C + 2, stdin);
 for(unsigned col = 0; col != board.C; ++col){
 board.GRID(row, col) = line[col] - '0';}}
+
 evaluateGroups(&board);
 
-typedef struct{
-Move *arr;
-unsigned size;
-unsigned capacity;}
-Moves;
-Moves moves = {0};
-
+int moveNumber = 0;
 unsigned index;
 while((index = getLargestGroupSizeIndex(board.groups)) != -1 && board.groups.arr[index].size > 1){
-if(moves.size == moves.capacity){
-moves.arr = realloc(moves.arr, (moves.capacity = moves.capacity == 0 ? 4 : moves.capacity * 2) * sizeof(Move));}
-moves.arr[moves.size++] = makeBestMove(&board, 5, false);}
+makeBestMove(&board, 1, false);
+printf("move: %d\n", ++moveNumber);}
+
+
+
+
+
+
+
+
+
 
 
 unsigned totalScore = 0;
 for(unsigned i = 0; i < moves.size; ++i){
 unsigned tmp = moves.arr[i].length - 1;
 totalScore += tmp * tmp;}
-printf("%d\n%d\n", totalScore, moves.size);
+fprintf(f, "%d\n%d\n", totalScore, moves.size);
 for(unsigned i = 0; i < moves.size; ++i){
 Move m = moves.arr[i];
-printf("%d %d %d %d\n", m.color, m.length, R - m.row, m.col + 1);}
+fprintf(f, "%d %d %d %d\n", m.color, m.length, R - m.row, m.col + 1);}
 
 return 0;}
