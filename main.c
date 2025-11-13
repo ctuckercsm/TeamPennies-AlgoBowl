@@ -31,7 +31,7 @@ unsigned R
 
 void coords_append(Group *group, Coord x)
 	if group->size == group->capacity
-		group->arr = realloc(group->arr, (group->capacity = group->capacity ? group->capacity * 2 : 4) * sizeof(Coord))
+		group->arr = realloc(group->arr, (group->capacity = group->capacity ? group->capacity * 2 : 1) * sizeof(Coord))
 	group->arr[group->size++] = x
 
 void freeGroups(Groups groups)
@@ -118,7 +118,8 @@ void makeMove(Board *boardPtr, unsigned i)
 		for int row = (int)R - 1; row >= 0; --row
 			int val
 			if val = GRID((unsigned)row, cc)
-				GRID((unsigned)write_idx, cc) = val
+				if row != write_idx
+					GRID((unsigned)write_idx, cc) = val
 				--write_idx
 		// fill remaining cells above write_idx with zeros
 		for int row = write_idx; row >= 0; --row
@@ -133,8 +134,6 @@ void makeMove(Board *boardPtr, unsigned i)
 			memmove(dst, dst + R, (--boardPtr->C - c) * R)
 		else
 			++c
-
-	evaluateGroups(boardPtr)
 
 typedef struct
 	unsigned color
@@ -166,6 +165,7 @@ void makeBestMove(Board *boardPtr, unsigned reasoningDepth, bool inactionIsAccep
 			Board newBoard = *boardPtr
 			newBoard.grid = memcpy(malloc(R * boardPtr->C), boardPtr->grid, R * boardPtr->C)
 			makeMove(&newBoard, i)
+			evaluateGroups(&newBoard)
 			makeBestMove(&newBoard, reasoningDepth - 1, true)
 			int index, potentialLargestGroupSize
 			if (index = getLargestGroupSizeIndex(newBoard.groups)) == -1
@@ -193,8 +193,9 @@ void makeBestMove(Board *boardPtr, unsigned reasoningDepth, bool inactionIsAccep
 		if moves.size == moves.capacity
 			moves.arr = realloc(moves.arr, (moves.capacity = moves.capacity ? moves.capacity * 2 : 4) * sizeof(Move))
 		moves.arr[moves.size++] = (Move) { boardPtr->GRID(r0, c0), group.size, r0, c0 }
-	//freeGroups(boardPtr->groups)
 	makeMove(boardPtr, bestMoveIndex)
+	freeGroups(boardPtr->groups)
+	evaluateGroups(boardPtr)
 	return
 
 int main(int argc, char *argv[])
@@ -215,6 +216,13 @@ int main(int argc, char *argv[])
 
 	evaluateGroups(&board)
 
+	/*:
+		int index
+		if (index = getLargestGroupSizeIndex(board.groups)) == -1
+			printf("huh?\n")
+		else
+			printf("%d\n", board.groups.arr[index].size)*/
+
 	int moveNumber = 0
 	unsigned index
 	while (index = getLargestGroupSizeIndex(board.groups)) != -1 && board.groups.arr[index].size > 1
@@ -229,8 +237,6 @@ int main(int argc, char *argv[])
 		*/
 	
 	// Output
-	
-
 	unsigned totalScore = 0
 	for unsigned i = 0; i < moves.size; ++i
 		unsigned tmp = moves.arr[i].length - 1
