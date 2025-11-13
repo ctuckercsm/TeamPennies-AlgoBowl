@@ -96,7 +96,19 @@ def isValid(debug):
     if(totalscore != score):
         print("Score does not match")
         return False
+    if(validMovesRemain()):
+        print("Valid moves still remain")
+        return False
     return True
+
+def validMovesRemain():
+    global G
+    for r in range(R):
+        for c in range(C):
+            oldG = G
+            if(remove(r+1,c+1) != 0):
+                return True
+            G = oldG
 
 # Set to true to see the board after every move
 debug = False  
