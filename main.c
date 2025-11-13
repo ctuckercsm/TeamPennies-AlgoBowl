@@ -133,10 +133,12 @@ Move makeBestMove(Board *boardPtr, unsigned reasoningDepth, bool inactionIsAccep
 	if reasoningDepth == 0
 		return (Move) { 0 }
 	
-	int index
-	if (index = getLargestGroupSizeIndex(boardPtr->groups)) == -1
-		return (Move) { 0 }
-	int bestMoveRating = boardPtr->groups.arr[index].size
+	int bestMoveRating
+	:
+		int index
+		if (index = getLargestGroupSizeIndex(boardPtr->groups)) == -1
+			return (Move) { 0 }
+		bestMoveRating = boardPtr->groups.arr[index].size
 	int bestMoveIndex = -1
 
 	for unsigned i = 0; i < boardPtr->groups.size; ++i
@@ -145,7 +147,11 @@ Move makeBestMove(Board *boardPtr, unsigned reasoningDepth, bool inactionIsAccep
 			newBoard.grid = memcpy(malloc(R * boardPtr->C), boardPtr->grid, R * boardPtr->C)
 			makeMove(&newBoard, i)
 			makeBestMove(&newBoard, reasoningDepth - 1, true)
-			int thisMoveRating = 0
+			int index, thisMoveRating
+			if (index = getLargestGroupSizeIndex(newBoard.groups)) == -1
+				thisMoveRating = 0
+			else
+				thisMoveRating = newBoard.groups.arr[index].size
 			if bestMoveRating < thisMoveRating
 				bestMoveRating = thisMoveRating
 				bestMoveIndex = i
