@@ -193,18 +193,27 @@ evaluateGroups(boardPtr);
 return;}
 
 int main(int argc, char *argv[]){
-FILE *f = fopen(argv[1], "w");
+
+if(argc != 4){
+fprintf(stderr, "Usage: %s depth inputFile outputFile\n", argv[0]);
+return 2;}
+
+int reasoningDepth = atoi(argv[1]);
+
+FILE *inputFile = fopen(argv[2], "r");
+
+FILE *f = fopen(argv[3], "w");
 if(!f){
 perror("fopen");
 return EXIT_FAILURE;}
 
 Board board;
-scanf("%u %u", &R, &board.C);
-while(getchar() != '\n');
+fscanf(inputFile, "%u %u", &R, &board.C);
+while(getc(inputFile) != '\n');
 board.grid = malloc(R * board.C);
 for(unsigned row = 0; row != R; ++row){
 char line[board.C + 2];
-fgets(line, board.C + 2, stdin);
+fgets(line, board.C + 2, inputFile);
 for(unsigned col = 0; col != board.C; ++col){
 board.GRID(row, col) = line[col] - '0';}}
 
@@ -219,9 +228,8 @@ evaluateGroups(&board);
 
 int moveNumber = 0;
 while(board.largestGroupSizeIndex != -1 && board.groups.arr[board.largestGroupSizeIndex].size > 1){
-makeBestMove(&board, 10, false);
-if(moveNumber % 10 == 0){
-printf("move: %d\n", ++moveNumber);}}
+makeBestMove(&board, reasoningDepth, false);
+printf("move: %d\n", ++moveNumber);}
 
 
 unsigned totalScore = 0;
