@@ -24,7 +24,8 @@ Groups;
 typedef struct{
 unsigned C;
 Color *grid;
-Groups groups;}
+Groups groups;
+unsigned largestGroupSizeIndex;}
 Board;
 
 unsigned R;
@@ -69,6 +70,8 @@ unsigned nc = c - 1;
 if((nc < boardPtr->C && !VISITED(r, nc) && GRID(r, nc) == color)){
 dfs(color, r, nc, group);}}}
 
+unsigned largestSize = 0;
+boardPtr->largestGroupSizeIndex = -1;
 for(unsigned r = 0; r < R; ++r){
 for(unsigned c = 0; c < boardPtr->C; ++c){
 if(!VISITED(r, c)){
@@ -78,20 +81,14 @@ Group group = {0};
 dfs(color, r, c, &group);
 if(boardPtr->groups.size == boardPtr->groups.capacity){
 boardPtr->groups.arr = realloc(boardPtr->groups.arr, (boardPtr->groups.capacity = boardPtr->groups.capacity ? boardPtr->groups.capacity * 2 : 4) * sizeof(Group));}
-boardPtr->groups.arr[boardPtr->groups.size++] = group;}
+boardPtr->groups.arr[boardPtr->groups.size] = group;
+if(largestSize < group.size){
+largestSize = group.size;
+boardPtr->largestGroupSizeIndex = boardPtr->groups.size;}
+++boardPtr->groups.size;}
 else{
 VISITED(r, c) = true;}}}}
 free(visited);}
-
-unsigned getLargestGroupSizeIndex(Groups groups){
-unsigned largestSize = 0;
-unsigned index = -1;
-for(unsigned i = 0; i < groups.size; ++i){
-Group group = groups.arr[i];
-if(largestSize < group.size){
-largestSize = group.size;
-index = i;}}
-return index;}
 
 void makeMove(Board *boardPtr, unsigned i){
 char *grid = boardPtr->grid;
@@ -120,8 +117,8 @@ int write_idx = R - 1;
 for(int row = (int)R - 1; row >= 0; --row){
 int val;
 if(val = GRID((unsigned)row, cc)){
-if(row != write_idx){
-GRID((unsigned)write_idx, cc) = val;}
+
+GRID((unsigned)write_idx, cc) = val;
 --write_idx;}}
 
 for(int row = write_idx; row >= 0; --row){
@@ -151,15 +148,10 @@ Moves;
 Moves moves = {0};
 
 void makeBestMove(Board *boardPtr, unsigned reasoningDepth, bool inactionIsAcceptable){
-if(reasoningDepth == 0){
+if(reasoningDepth == 0 || boardPtr->largestGroupSizeIndex == -1){
 return;}
 
-int currentLargestGroupSize;
-{
-int index;
-if((index = getLargestGroupSizeIndex(boardPtr->groups)) == -1){
-return;}
-currentLargestGroupSize = boardPtr->groups.arr[index].size;}
+int currentLargestGroupSize = boardPtr->groups.arr[boardPtr->largestGroupSizeIndex].size;
 int bestMoveIndex = -1;
 
 for(unsigned i = 0; i < boardPtr->groups.size; ++i){
@@ -169,11 +161,11 @@ newBoard.grid = memcpy(malloc(R * boardPtr->C), boardPtr->grid, R * boardPtr->C)
 makeMove(&newBoard, i);
 evaluateGroups(&newBoard);
 makeBestMove(&newBoard, reasoningDepth - 1, true);
-int index, potentialLargestGroupSize;
-if((index = getLargestGroupSizeIndex(newBoard.groups)) == -1){
+int potentialLargestGroupSize;
+if(newBoard.largestGroupSizeIndex == -1){
 potentialLargestGroupSize = 0;}
 else{
-potentialLargestGroupSize = newBoard.groups.arr[index].size;}
+potentialLargestGroupSize = newBoard.groups.arr[newBoard.largestGroupSizeIndex].size;}
 
 if(currentLargestGroupSize < potentialLargestGroupSize){
 currentLargestGroupSize = potentialLargestGroupSize;
@@ -184,7 +176,7 @@ freeGroups(newBoard.groups);}}
 if(bestMoveIndex == -1){
 if(inactionIsAcceptable){
 return;}
-bestMoveIndex = getLargestGroupSizeIndex(boardPtr->groups);
+bestMoveIndex = boardPtr->largestGroupSizeIndex;
 if(bestMoveIndex == -1){
 printf("IMPOSSIBLE!\n");}}
 
@@ -218,26 +210,18 @@ board.GRID(row, col) = line[col] - '0';}}
 
 evaluateGroups(&board);
 
-{
-int index;
-if((index = getLargestGroupSizeIndex(board.groups)) == -1){
-printf("huh?\n");}
-else{
-printf("%d\n", board.groups.arr[index].size);}}
+
+
+
+
+
+
 
 int moveNumber = 0;
-unsigned index;
-while((index = getLargestGroupSizeIndex(board.groups)) != -1 && board.groups.arr[index].size > 1){
+while(board.largestGroupSizeIndex != -1 && board.groups.arr[board.largestGroupSizeIndex].size > 1){
 makeBestMove(&board, 1, false);
-printf("move: %d\n", ++moveNumber);}
-
-
-
-
-
-
-
-
+if(moveNumber % 10 == 0){
+printf("move: %d\n", ++moveNumber);}}
 
 
 unsigned totalScore = 0;
@@ -248,5 +232,10 @@ fprintf(f, "%d\n%d\n", totalScore, moves.size);
 for(unsigned i = 0; i < moves.size; ++i){
 Move m = moves.arr[i];
 fprintf(f, "%d %d %d %d\n", m.color, m.length, R - m.row, m.col + 1);}
+
+for(unsigned row = 0; row != R; ++row){
+for(unsigned col = 0; col != board.C; ++col){
+printf("%d, ", (int)board.GRID(row, col));}
+printf("\n");}
 
 return 0;}
