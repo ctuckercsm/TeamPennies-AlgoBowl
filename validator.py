@@ -96,19 +96,21 @@ def isValid(debug):
     if(totalscore != score):
         print("Score does not match")
         return False
-    if(validMovesRemain()):
-        print("Valid moves still remain")
+    validMoveCoord = validMovesRemain()
+    if(validMoveCoord is not None):
+        print("Valid move remains")
+        print(validMoveCoord)
         return False
     return True
 
 def validMovesRemain():
-    global G
     for r in range(R):
         for c in range(C):
-            oldG = G
-            if(remove(r+1,c+1) != 0):
-                return True
-            G = oldG
+            if c + 1 < C and G[r][c] == G[r][c + 1] and G[r][c] != 0:
+                return (r, c)
+            if r + 1 < R and G[r][c] == G[r + 1][c] and G[r][c] != 0:
+                return (r, c)
+    return None
 
 # Set to true to see the board after every move
 debug = False  
