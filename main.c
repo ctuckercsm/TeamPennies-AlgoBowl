@@ -217,7 +217,7 @@ int main(int argc, char *argv[])
 
 	int moveNumber = 0
 	while board.largestGroupSizeIndex != -1 && board.groups.arr[board.largestGroupSizeIndex].size > 1
-		makeBestMove(&board, 1, false)
+		makeBestMove(&board, 10, false)
 		if moveNumber % 10 == 0
 			printf("move: %d\n", ++moveNumber)
 	
